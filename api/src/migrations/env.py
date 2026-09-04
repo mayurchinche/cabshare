@@ -34,6 +34,10 @@ if config.config_file_name is not None:
 # (e.g. Railway's Postgres in prod) instead of silently hitting the local dev default.
 _env_db_url = os.getenv("CABSHARE_DATABASE_URL")
 if _env_db_url:
+    # Same normalization as api/src/db.py: managed providers (Render/Railway) often hand out a
+    # bare "postgresql://" URL, but we install psycopg v3, not psycopg2.
+    if _env_db_url.startswith("postgresql://"):
+        _env_db_url = _env_db_url.replace("postgresql://", "postgresql+psycopg://", 1)
     config.set_main_option("sqlalchemy.url", _env_db_url)
 
 target_metadata = Base.metadata

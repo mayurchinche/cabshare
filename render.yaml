@@ -1,0 +1,29 @@
+# Render.com deploy config (alternative to Railway — same Dockerfile, no code changes needed).
+# In Render dashboard: New -> Blueprint -> point at this repo, it reads this file automatically.
+# Or manually: New -> Web Service -> Docker -> Root Directory "." -> Dockerfile Path "api/Dockerfile".
+services:
+  - type: web
+    name: cabshare-api
+    runtime: docker
+    dockerfilePath: api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: CABSHARE_DATABASE_URL
+        fromDatabase:
+          name: cabshare-db
+          property: connectionString
+      - key: CABSHARE_ENABLE_SCHEDULER
+        value: "true"
+      - key: CABSHARE_LOG_LEVEL
+        value: "INFO"
+      # Set these manually in the Render dashboard (secrets, not committed):
+      # CABSHARE_RAILRADAR_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+      # TWILIO_VERIFY_SERVICE_SID
+
+databases:
+  - name: cabshare-db
+    plan: free
+    databaseName: cabshare
+    user: cabshare

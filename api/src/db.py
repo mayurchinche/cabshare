@@ -12,6 +12,11 @@ from sqlalchemy.orm import Session, sessionmaker
 DATABASE_URL = os.getenv(
     "CABSHARE_DATABASE_URL", "postgresql://cabshare:cabshare@localhost:5432/cabshare"
 )
+# Managed Postgres providers (Render, Railway) usually hand out a bare "postgresql://" URL;
+# we install psycopg v3, not psycopg2, so force that driver regardless of what's given.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
