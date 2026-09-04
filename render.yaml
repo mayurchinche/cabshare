@@ -20,7 +20,7 @@ services:
         value: "INFO"
       # Set these manually in the Render dashboard (secrets, not committed):
       # CABSHARE_RAILRADAR_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
-      # TWILIO_VERIFY_SERVICE_SID
+      # TWILIO_FROM_NUMBER
 
 databases:
   - name: cabshare-db

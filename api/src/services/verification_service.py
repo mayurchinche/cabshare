@@ -22,18 +22,19 @@ class VerificationError(Exception):
 
 
 class OtpService:
-    """OTP delivery: real SMS via Twilio Verify when TWILIO_* env vars are set (prod), else an
+    """OTP delivery: real SMS via Twilio's plain Messaging API (works on a trial account's free
+    credit — Twilio Verify needs a paid/upgraded account, so we generate and store the code
+    ourselves and just send it as a text) when TWILIO_* env vars are set (prod); else an
     in-memory dev fallback whose code is echoed back to the caller for local/emulator testing
-    (see riders.py's debug_otp_code). Twilio Verify owns code generation/storage/expiry itself,
-    so no local `_codes` bookkeeping is needed on that path."""
+    (see riders.py's debug_otp_code)."""
 
     def __init__(self) -> None:
         self._codes: dict[str, str] = {}
-        self._verify_service_sid = os.getenv("TWILIO_VERIFY_SERVICE_SID")
         account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+        self._from_number = os.getenv("TWILIO_FROM_NUMBER")
         self._twilio_client = None
-        if account_sid and auth_token and self._verify_service_sid:
+        if account_sid and auth_token and self._from_number:
             from twilio.rest import Client  # imported lazily: optional dep, only needed in prod
 
             self._twilio_client = Client(account_sid, auth_token)
@@ -43,25 +44,21 @@ class OtpService:
         return self._twilio_client is not None
 
     def request_otp(self, phone_number: str) -> str | None:
+        code = f"{random.randint(0, 999999):06d}"
+        self._codes[phone_number] = code
         if self._twilio_client is not None:
-            self._twilio_client.verify.v2.services(self._verify_service_sid).verifications.create(
-                to=phone_number, channel="sms"
+            self._twilio_client.messages.create(
+                body=f"Your CabShare verification code is {code}",
+                from_=self._from_number,
+                to=phone_number,
             )
             logger.info("otp.requested via=twilio")
             return None
-        code = f"{random.randint(0, 999999):06d}"
-        self._codes[phone_number] = code
         logger.info("otp.requested via=debug")
         return code
 
     def confirm_otp(self, phone_number: str, code: str) -> bool:
-        if self._twilio_client is not None:
-            check = self._twilio_client.verify.v2.services(
-                self._verify_service_sid
-            ).verification_checks.create(to=phone_number, code=code)
-            ok = check.status == "approved"
-        else:
-            ok = self._codes.get(phone_number) == code
+        ok = self._codes.get(phone_number) == code
         logger.info("otp.confirm_attempted success=%s", ok)
         return ok
 
