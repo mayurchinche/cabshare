@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node / React Native
+node_modules/
+android/
+ios/
+*.log
+.env*
+
+# General
+.DS_Store
+.vscode/
+.idea/
+*.tmp
+*.swp

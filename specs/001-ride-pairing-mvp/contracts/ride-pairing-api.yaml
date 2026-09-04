@@ -1,0 +1,182 @@
+openapi: 3.0.3
+info:
+  title: CabShare Ride Pairing API (MVP)
+  version: "0.1.0"
+  description: >
+    Contract for the station-to-destination ride pairing feature. Schemas that may be returned
+    to a rider about their matched partner (MaskedRiderProfile) intentionally omit contact
+    fields per Constitution Principle I.
+
+paths:
+  /intents:
+    post:
+      summary: Submit a ride-share intent
+      operationId: createRideIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RideIntentCreate'
+      responses:
+        '201':
+          description: Intent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RideIntent'
+        '403':
+          description: Rider is not verified (FR-011)
+
+  /intents/{intentId}:
+    get:
+      summary: Get intent status (poll fallback for match/expiry updates)
+      operationId: getRideIntent
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Current intent status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RideIntent'
+
+  /intents/{intentId}/research:
+    post:
+      summary: Manually re-trigger matching after the intent expired with no match (FR-002b)
+      operationId: retryMatching
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202':
+          description: Re-search started; poll GET /intents/{intentId} or await push notification
+
+  /matches/{matchId}:
+    get:
+      summary: Get proposed/confirmed match details
+      operationId: getMatch
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Match details, including masked partner profile and itemized fare-split
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Match'
+
+  /matches/{matchId}/confirm:
+    post:
+      summary: Confirm participation in a proposed match (FR-005)
+      operationId: confirmMatch
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Confirmation recorded; match becomes `confirmed` once both riders confirm
+        '409':
+          description: Confirmation deadline passed
+
+  /matches/{matchId}/decline:
+    post:
+      summary: Decline a proposed match (FR-008, FR-009)
+      operationId: declineMatch
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Match cancelled; other rider notified without attribution
+
+  /rides/{rideId}/cancel:
+    post:
+      summary: Cancel a ready/booked ride (FR-008)
+      operationId: cancelRide
+      parameters:
+        - name: rideId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Cancellation result, including any fee if inside the 10-minute cutoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancellationResult'
+
+components:
+  schemas:
+    RideIntentCreate:
+      type: object
+      required: [origin_station, destination, luggage_size, expected_arrival_time]
+      properties:
+        origin_station: { type: string }
+        destination: { type: string }
+        luggage_size: { type: string, enum: [none, small, medium, large] }
+        expected_arrival_time: { type: string, format: date-time }
+        gender_preference: { type: string, enum: [any, male, female], nullable: true }
+
+    RideIntent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [open, matched, expired, cancelled] }
+        matching_window_opens_at: { type: string, format: date-time }
+        matching_window_closes_at: { type: string, format: date-time }
+        match_id: { type: string, format: uuid, nullable: true }
+
+    MaskedRiderProfile:
+      type: object
+      description: The only view of a rider ever exposed to their matched partner.
+      properties:
+        display_name: { type: string, example: "Priya S." }
+        photo_url: { type: string }
+        rating: { type: number, format: float }
+      # NOTE: phone_number and email are intentionally never part of this schema.
+
+    Match:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [proposed, confirmed, cancelled, expired] }
+        partner_profile:
+          $ref: '#/components/schemas/MaskedRiderProfile'
+        combined_stop_order:
+          type: array
+          items:
+            type: object
+            properties:
+              rider_role: { type: string, enum: [self, partner] }
+              stop_type: { type: string, enum: [pickup, drop] }
+              location: { type: string }
+        fare_split:
+          type: object
+          properties:
+            total_fare: { type: number }
+            platform_fee_per_rider: { type: number, example: 10 }
+            your_share: { type: number }
+            partner_share: { type: number }
+        confirmation_deadline: { type: string, format: date-time }
+
+    CancellationResult:
+      type: object
+      properties:
+        status: { type: string, enum: [cancelled] }
+        fee_charged: { type: number, example: 0 }
+        within_free_cutoff: { type: boolean }

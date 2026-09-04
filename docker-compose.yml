@@ -1,0 +1,19 @@
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: cabshare
+      POSTGRES_PASSWORD: cabshare
+      POSTGRES_DB: cabshare
+    ports:
+      - "55432:5432"
+    volumes:
+      - cabshare_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cabshare"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cabshare_pgdata:

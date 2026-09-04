@@ -1,0 +1,11 @@
+node_modules/
+.git/
+*.log*
+.env*
+coverage/
+mobile/android/
+mobile/ios/
+mobile/node_modules/
+api/tests/
+api/.pytest_cache/
+**/__pycache__/

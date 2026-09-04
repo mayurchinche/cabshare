@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "api/Dockerfile"
+
+[deploy]
+# Root Directory for this Railway service should be set to "." (repo root) in the dashboard so
+# the Dockerfile's build context includes both api/pyproject.toml and api/src.
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"

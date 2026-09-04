@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: CabShare Train/Station Matching API
+  version: "0.1.0"
+  description: >
+    Contract for station selection, train route search, live status, and the two new
+    match reasons ("same_train", "similar_arrival_time"). All schemas returned about a
+    matched rider remain MaskedRiderProfile-only (Constitution Principle I) — no change
+    to that contract here, only additive fields on Match.
+
+paths:
+  /stations/search:
+    get:
+      summary: Search stations by partial name (autocomplete)
+      operationId: searchStations
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 3 }
+        - name: near
+          in: query
+          required: false
+          description: "Optional 'lat,lng' to bias/sort results by proximity"
+          schema: { type: string }
+      responses:
+        '200':
+          description: Matching stations, best match first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Station' }
+
+  /trains/search:
+    get:
+      summary: Find trains running between two stations
+      operationId: searchTrains
+      parameters:
+        - name: originStationCode
+          in: query
+          required: true
+          schema: { type: string }
+        - name: destinationStationCode
+          in: query
+          required: true
+          schema: { type: string }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Trains found for the route (may be empty array — FR-004)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Train' }
+        '503':
+          description: Train-data provider unavailable; client should offer manual train-number entry (FR-006)
+
+  /trains/{trainNumber}/live-status:
+    get:
+      summary: Best-effort live running status for a train on a given date
+      operationId: getTrainLiveStatus
+      parameters:
+        - name: trainNumber
+          in: path
+          required: true
+          schema: { type: string }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: >
+            Always returns 200 even when live data is unavailable — `available: false` is the
+            normal "no data" case, not an error (FR-005). Never 4xx/5xx for "no live data".
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TrainLiveStatus' }
+
+  /intents/{intentId}/select-train:
+    post:
+      summary: Attach a chosen train + travel date to an existing ride intent
+      operationId: selectTrainForIntent
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trainNumber, travelDate]
+              properties:
+                trainNumber: { type: string }
+                travelDate: { type: string, format: date }
+      responses:
+        '200':
+          description: Intent updated with selected train
+        '404':
+          description: Intent not found
+        '409':
+          description: Intent already matched/cancelled, cannot change train selection
+
+  /matches/{matchId}/booking-link:
+    get:
+      summary: Get an external booking hand-off link pre-filled with train/date/stations
+      operationId: getBookingLink
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deep link and disclosure copy (FR-011)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookingUrl: { type: string, format: uri }
+                  disclosure:
+                    type: string
+                    example: "Booking and payment happen outside CabShare, via IRCTC."
+
+components:
+  schemas:
+    Station:
+      type: object
+      properties:
+        stationCode: { type: string, example: "NDLS" }
+        name: { type: string, example: "New Delhi" }
+        state: { type: string, example: "Delhi" }
+        city: { type: string, nullable: true }
+
+    Train:
+      type: object
+      properties:
+        trainNumber: { type: string, example: "12951" }
+        trainName: { type: string, example: "Mumbai Rajdhani" }
+        scheduledDeparture: { type: string, format: date-time }
+        scheduledArrival: { type: string, format: date-time }
+
+    TrainLiveStatus:
+      type: object
+      properties:
+        available: { type: boolean }
+        delayMinutes: { type: integer, nullable: true }
+        lastStationCode: { type: string, nullable: true }
+        asOf:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Null when available=false. Always shown to riders per FR-005."
+
+    Match:
+      type: object
+      description: "Additive fields only — see Feature 001 contract for the full existing schema."
+      properties:
+        matchReason:
+          type: string
+          enum: [geo_radius, same_train, similar_arrival_time]
+        timingBasis:
+          type: string
+          enum: [live_status, scheduled]
+          nullable: true
+        invalidatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Non-null means this match MUST be treated as stale/void by the client (FR-009)."
