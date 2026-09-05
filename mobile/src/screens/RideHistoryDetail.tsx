@@ -59,17 +59,24 @@ export default function RideHistoryDetailScreen({ route, navigation }: Props): R
       </Text>
 
       <Card style={styles.card}>
-        <View style={styles.partnerRow}>
-          <LinearGradient colors={gradients.primary} style={styles.avatar}>
-            <Text style={styles.avatarText}>{ride.partner_display_name.charAt(0)}</Text>
-          </LinearGradient>
-          <View>
-            <Text style={typography.subheading}>{ride.partner_display_name}</Text>
-            <Text style={typography.caption}>⭐ {ride.partner_rating.toFixed(1)}</Text>
+        {ride.partner_display_name ? (
+          <View style={styles.partnerRow}>
+            <LinearGradient colors={gradients.primary} style={styles.avatar}>
+              <Text style={styles.avatarText}>{ride.partner_display_name.charAt(0)}</Text>
+            </LinearGradient>
+            <View>
+              <Text style={typography.subheading}>{ride.partner_display_name}</Text>
+              <Text style={typography.caption}>⭐ {(ride.partner_rating ?? 0).toFixed(1)}</Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <Text style={typography.body}>
+            {ride.status === 'open' ? 'Still looking for a co-rider…' : 'No co-rider was found for this request.'}
+          </Text>
+        )}
       </Card>
 
+      {ride.total_fare > 0 && (
       <Card style={styles.card}>
         <Text style={styles.sectionLabel}>Fare receipt</Text>
         <View style={styles.receiptRow}>
@@ -87,6 +94,7 @@ export default function RideHistoryDetailScreen({ route, navigation }: Props): R
           </Text>
         </View>
       </Card>
+      )}
 
       <Button title="Book this route again" onPress={() => navigation.navigate('PostIntent')} />
     </View>

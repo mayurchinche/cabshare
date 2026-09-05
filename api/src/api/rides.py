@@ -25,10 +25,11 @@ def list_ride_history(
     db: Session = Depends(get_db),
     rider_id: uuid.UUID = Depends(get_current_rider_id),
 ) -> list[RideHistoryItem]:
-    """RideHistoryList (Feature 004): every ride this rider has been part of, newest first."""
-    my_intents = db.query(RideIntent.id, RideIntent.rider_id).filter(
-        RideIntent.rider_id == rider_id
-    ).subquery()
+    """RideHistoryList (Feature 004): every ride *request* this rider has ever made, newest
+    first — including ones that never got a co-rider (still open, expired, cancelled), not
+    just completed rides. Each such request is a "transaction" worth showing."""
+    my_intents_query = db.query(RideIntent).filter(RideIntent.rider_id == rider_id)
+    my_intents = my_intents_query.subquery()
 
     rides = (
         db.query(Ride)
@@ -42,7 +43,9 @@ def list_ride_history(
     )
 
     items: list[RideHistoryItem] = []
+    covered_match_ids: set[uuid.UUID] = set()
     for ride in rides:
+        covered_match_ids.add(ride.match_id)
         match = db.get(Match, ride.match_id)
         is_a = match.intent_a.rider_id == rider_id
         mine, partner = (match.intent_a, match.intent_b) if is_a else (match.intent_b, match.intent_a)
@@ -61,6 +64,33 @@ def list_ride_history(
                 created_at=ride.created_at.isoformat(),
             )
         )
+
+    # Any of this rider's own requests not already covered by a completed ride above — still
+    # searching, expired unmatched, cancelled before a ride was booked, or matched but the ride
+    # record hasn't been created yet. Shown with no partner/fare rather than being hidden.
+    for intent in my_intents_query.order_by(RideIntent.created_at.desc()).all():
+        if intent.match_id is not None and intent.match_id in covered_match_ids:
+            continue
+        partner_name = partner_rating = None
+        if intent.match_id is not None:
+            match = db.get(Match, intent.match_id)
+            if match is not None:
+                partner_intent = match.intent_b if match.intent_a_id == intent.id else match.intent_a
+                partner_name = partner_intent.rider.display_name
+                partner_rating = float(partner_intent.rider.rating)
+        items.append(
+            RideHistoryItem(
+                id=str(intent.id),
+                origin_station=intent.origin_station,
+                destination=intent.destination,
+                status=intent.status.value,
+                partner_display_name=partner_name,
+                partner_rating=partner_rating,
+                created_at=intent.created_at.isoformat(),
+            )
+        )
+
+    items.sort(key=lambda item: item.created_at, reverse=True)
     return items
 
 

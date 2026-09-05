@@ -17,8 +17,25 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-/** Feature 004, page 14: past rides — a read-only query over rides/matches (no new DB table,
- * see DATABASE.md). Refetches on focus so returning from a just-completed ride shows it. */
+/** Feature 004, page 14: past rides — a read-only query over rides/matches/ride_intents (no
+ * new DB table, see DATABASE.md). Refetches on focus so returning from a just-completed ride
+ * shows it. Includes requests that never matched (open/expired/cancelled), not just booked
+ * rides — every ride request is a transaction worth showing. */
+function historyStatusLabel(status: string): string {
+  switch (status) {
+    case 'open':
+      return 'Still searching…';
+    case 'expired':
+      return 'No match found';
+    case 'cancelled':
+      return 'Cancelled';
+    case 'matched':
+      return 'Matched — booking pending';
+    default:
+      return status;
+  }
+}
+
 export default function RideHistoryListScreen({ navigation }: Props): React.JSX.Element {
   const [rides, setRides] = useState<RideHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,9 +93,11 @@ export default function RideHistoryListScreen({ navigation }: Props): React.JSX.
               <Text style={typography.subheading}>
                 {item.origin_station} → {item.destination}
               </Text>
-              <Text style={typography.caption}>with {item.partner_display_name}</Text>
+              <Text style={typography.caption}>
+                {item.partner_display_name ? `with ${item.partner_display_name}` : historyStatusLabel(item.status)}
+              </Text>
             </View>
-            <Text style={styles.fare}>₹{item.your_share.toFixed(0)}</Text>
+            <Text style={styles.fare}>{item.your_share ? `₹${item.your_share.toFixed(0)}` : '—'}</Text>
           </View>
         </Card>
       )}

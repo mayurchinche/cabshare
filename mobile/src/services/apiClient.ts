@@ -222,8 +222,8 @@ export interface RideHistoryItem {
   origin_station: string;
   destination: string;
   status: string;
-  partner_display_name: string;
-  partner_rating: number;
+  partner_display_name: string | null;
+  partner_rating: number | null;
   your_share: number;
   total_fare: number;
   platform_fee: number;

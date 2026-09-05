@@ -19,9 +19,11 @@ class RideHistoryItem(BaseModel):
     origin_station: str
     destination: str
     status: str
-    partner_display_name: str
-    partner_rating: float
-    your_share: float
-    total_fare: float
-    platform_fee: float
+    # None for ride intents that never matched (still searching, expired, cancelled solo) —
+    # every request is shown here even without a co-rider/fare yet.
+    partner_display_name: str | None = None
+    partner_rating: float | None = None
+    your_share: float = 0.0
+    total_fare: float = 0.0
+    platform_fee: float = 0.0
     created_at: str

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { createRideIntent, RideIntentCreate, Station, Place } from '../services/apiClient';
+import { createRideIntent, getActiveActivity, getAuthToken, RideIntentCreate, Station, Place } from '../services/apiClient';
 import { useIntentStatus } from '../services/intentStatus';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import Button from '../components/Button';
@@ -50,6 +50,21 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
   const [submittedIntentId, setSubmittedIntentId] = useState<string | null>(null);
 
   const { intent, error } = useIntentStatus(submittedIntentId);
+
+  // Resume the "searching" view if this rider already has an open request — e.g. they posted
+  // one, navigated away to Home/another tab, and came back here instead of via the match/ride
+  // screens (those are only reachable once matched, per Home's own active-activity card).
+  useEffect(() => {
+    const riderId = getAuthToken();
+    if (!riderId) return;
+    getActiveActivity(riderId)
+      .then((activity) => {
+        if (activity.intent_status === 'open' && activity.intent_id) {
+          setSubmittedIntentId(activity.intent_id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (intent?.status === 'matched' && intent.match_id) {
@@ -239,7 +254,9 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
           helperText={
             selectedTrain
               ? "Set from your selected train's scheduled arrival — not editable"
-              : 'When you expect to reach the destination station (or meeting point)'
+              : // ponytail: matching only activates once this time hits (co-riders must be
+                // arriving together), so testers expecting an instant match should use "now".
+                'Matching starts at this time, not when you submit — use the current time to match right away'
           }
         />
 
