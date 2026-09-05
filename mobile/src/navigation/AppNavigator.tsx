@@ -3,6 +3,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 import SplashScreen from '../screens/Splash';
@@ -103,6 +104,11 @@ function HomeTabs(): React.JSX.Element {
 
 export default function AppNavigator(): React.JSX.Element {
   return (
+    // GestureHandlerRootView must be the OUTERMOST view of the app — @gorhom/bottom-sheet's pan
+    // gestures are silently dead (sheet renders but won't drag) if any gesture-handler consumer
+    // mounts outside it. Wrapping here rather than in index.js keeps it colocated with the
+    // navigation tree it protects.
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
@@ -163,5 +169,6 @@ export default function AppNavigator(): React.JSX.Element {
       </Stack.Navigator>
     </NavigationContainer>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
