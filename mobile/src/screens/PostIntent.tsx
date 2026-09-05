@@ -138,6 +138,22 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
       Alert.alert('Invalid time', 'Enter arrival time as YYYY-MM-DDTHH:MM, e.g. 2026-09-05T18:30.');
       return;
     }
+    const hoursAway = (new Date(expectedArrivalTime).getTime() - Date.now()) / 3_600_000;
+    if (hoursAway > 6) {
+      // ponytail: matching only activates at the typed time — a mistyped far-future date
+      // (e.g. wrong month) otherwise silently strands the request with no visible error.
+      const proceed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'That’s a while away',
+          `You entered an arrival time about ${Math.round(hoursAway)} hours from now — matching won't start until then. Continue?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Continue', onPress: () => resolve(true) },
+          ]
+        );
+      });
+      if (!proceed) return;
+    }
     if (!finalDestination) {
       Alert.alert('Missing drop-off', 'Add where the cab should drop you after the station.');
       return;
@@ -256,9 +272,16 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
               ? "Set from your selected train's scheduled arrival — not editable"
               : // ponytail: matching only activates once this time hits (co-riders must be
                 // arriving together), so testers expecting an instant match should use "now".
-                'Matching starts at this time, not when you submit — use the current time to match right away'
+                'Matching starts at this time, not when you submit'
           }
         />
+        {!selectedTrain && (
+          <Pressable
+            onPress={() => setExpectedArrivalTime(new Date().toISOString().slice(0, 16))}
+          >
+            <Text style={styles.trackLink}>Use current time →</Text>
+          </Pressable>
+        )}
 
         <Text style={styles.sectionLabel}>Final drop-off</Text>
         <Pressable style={styles.stationField} onPress={onPickFinalDestination}>
