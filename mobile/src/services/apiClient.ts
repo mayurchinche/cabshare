@@ -188,6 +188,18 @@ export async function cancelRide(rideId: string): Promise<CancellationResult> {
   return request(`/rides/${rideId}/cancel`, { method: 'POST' });
 }
 
+// Item 6: manual self-reported status advance (booked -> in_progress -> completed); cancellation
+// stays on cancelRide() above since only that path runs the fee/cutoff logic.
+export async function updateRideStatus(
+  rideId: string,
+  status: 'booked' | 'in_progress' | 'completed'
+): Promise<{ id: string; status: string }> {
+  return request(`/rides/${rideId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
 export interface OtpRequestResult {
   rider_id: string;
   debug_otp_code: string; // ponytail: dev-only stand-in until a real SMS provider is wired

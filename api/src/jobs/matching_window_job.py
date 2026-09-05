@@ -65,13 +65,25 @@ def run_matching_window_pass(db: Session, now: datetime | None = None) -> list[M
     created_matches: list[Match] = []
     logger.debug("matching_window_pass.started candidate_count=%d", len(candidates))
 
+    # FR-008/FR-009 rework: a mutually-declined pairing must never be re-offered to the same
+    # two riders. Declines are recorded as `Match.status == CANCELLED`; derive the set of
+    # already-declined rider pairs so the pool-building step below can exclude them.
+    declined_matches = (
+        db.execute(select(Match).where(Match.status == MatchStatus.CANCELLED)).scalars().all()
+    )
+    declined_rider_pairs: set[frozenset[str]] = {
+        frozenset({str(m.intent_a.rider_id), str(m.intent_b.rider_id)}) for m in declined_matches
+    }
+
     for subject in candidates:
         if subject.intent_id in already_matched_ids:
             continue
         pool = [
             c
             for c in candidates
-            if c.intent_id != subject.intent_id and c.intent_id not in already_matched_ids
+            if c.intent_id != subject.intent_id
+            and c.intent_id not in already_matched_ids
+            and frozenset({subject.rider_id, c.rider_id}) not in declined_rider_pairs
         ]
         partner = find_match(subject, pool)
         if partner is None:

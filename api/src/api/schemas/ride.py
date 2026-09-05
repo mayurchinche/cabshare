@@ -11,6 +11,12 @@ class CancellationResult(BaseModel):
     within_free_cutoff: bool
 
 
+class RideStatusUpdateRequest(BaseModel):
+    """Item 6: manual self-reported ride status transition (booked/in_progress/completed)."""
+
+    status: str
+
+
 class RideHistoryItem(BaseModel):
     """RideHistoryList/RideHistoryDetail (Feature 004) — read-only projection over
     rides+matches+ride_intents, no new table (see DATABASE.md)."""

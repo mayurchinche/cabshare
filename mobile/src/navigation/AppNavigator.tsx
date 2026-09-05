@@ -30,7 +30,7 @@ const navTheme = {
   colors: {
     ...DarkTheme.colors,
     background: colors.background,
-    card: colors.surface,
+    card: colors.surfaceSolid,
     text: colors.textPrimary,
     border: colors.border,
     primary: colors.accentTeal,

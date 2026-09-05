@@ -6,10 +6,12 @@
  */
 export const colors = {
   background: '#05060A',
-  surface: '#12141B', // ponytail: opaque stand-in for the mockup's blurred glass card — real
-  // backdrop blur needs a BlurView layered behind content on a per-card basis; against this flat
-  // dark background the visual difference is negligible, so skip until a busier background
-  // (photo/map) actually needs it.
+  // ponytail: matches design-system.css's --surface exactly — a translucent white overlay
+  // over the dark bg gives cards visible "lift"/depth (the CRED/INDMoney glass look). This was
+  // previously flattened to an opaque solid, which made every card blend into the background
+  // with zero contrast — the actual root cause of the "not premium" feedback.
+  surface: 'rgba(255,255,255,0.045)',
+  surfaceSolid: '#12141B', // opaque variant for nav backgrounds where translucency is wrong
   surfaceRaised: '#1A1D26',
   border: 'rgba(255,255,255,0.09)',
   primary: '#8B7CF6', // accent-violet, used as solid fallback where a gradient can't render

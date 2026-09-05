@@ -24,6 +24,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
  * then PAN/KYC (`PanKyc`), then `ProfileSetup`, then `Home` — see `AppNavigator`'s nav map.
  */
 export default function VerificationScreen({ navigation }: Props): React.JSX.Element {
+  const scrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -39,6 +40,16 @@ export default function VerificationScreen({ navigation }: Props): React.JSX.Ele
       if (cooldownTimer.current) clearInterval(cooldownTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (step === 'otp') {
+      // SegmentedCodeInput autofocuses immediately; give the keyboard animation a beat before
+      // scrolling so the code boxes + confirm button land above it, not just adjustResize's cut.
+      const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [step]);
 
   const startCooldown = (): void => {
     setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -107,7 +118,11 @@ export default function VerificationScreen({ navigation }: Props): React.JSX.Ele
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <CarMotion
           state={motionState}
           caption={
@@ -132,6 +147,10 @@ export default function VerificationScreen({ navigation }: Props): React.JSX.Ele
               placeholder="+91XXXXXXXXXX"
               keyboardType="phone-pad"
               autoFocus
+              // Android's adjustResize shrinks the viewport on focus, but a short screen with
+              // vertical centering can still leave the field under the keyboard — force a
+              // scroll so the input+button are guaranteed visible.
+              onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
             />
             <Button title="Send OTP" onPress={onRequestOtp} loading={submitting} />
           </Card>
@@ -173,7 +192,10 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: spacing.md,
-    justifyContent: 'center',
+    // Top-anchored with generous breathing room instead of justifyContent:'center': centering
+    // the CarMotion+Card block as one unit made the Card (the actual interactive content) read
+    // as bottom-heavy, since CarMotion sits above it and eats the "upper half".
+    paddingTop: spacing.xl * 1.5,
   },
   subtitle: {
     marginTop: spacing.xs,

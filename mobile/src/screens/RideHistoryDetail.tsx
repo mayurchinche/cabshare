@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { getRideHistory, RideHistoryItem } from '../services/apiClient';
+import { historyStatusLabel, statusBadgeColor } from './RideHistoryList';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -55,7 +56,8 @@ export default function RideHistoryDetailScreen({ route, navigation }: Props): R
         {ride.origin_station} → {ride.destination}
       </Text>
       <Text style={[typography.caption, styles.subtitle]}>
-        {new Date(ride.created_at).toLocaleString()} · {ride.status}
+        {new Date(ride.created_at).toLocaleString()} ·{' '}
+        <Text style={{ color: statusBadgeColor(ride.status) }}>{historyStatusLabel(ride.status)}</Text>
       </Text>
 
       <Card style={styles.card}>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { getMatch, MatchDetail } from '../services/apiClient';
+import { getMatch, MatchDetail, updateRideStatus } from '../services/apiClient';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -71,7 +71,10 @@ export default function RideConfirmScreen({ route, navigation }: Props): React.J
   const { matchId, rideId } = route.params;
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [booked, setBooked] = useState(false);
+  const [rideStatus, setRideStatus] = useState<'ready' | 'booked' | 'in_progress' | 'completed'>(
+    'ready'
+  );
+  const [statusUpdating, setStatusUpdating] = useState(false);
   const [partnerCancelled, setPartnerCancelled] = useState(false);
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function RideConfirmScreen({ route, navigation }: Props): React.J
         const data = await getMatch(matchId);
         if (cancelled) return;
         setMatch(data);
-        if (data.status === 'cancelled' && !booked) {
+        if (data.status === 'cancelled' && rideStatus !== 'completed') {
           setPartnerCancelled(true);
         }
       } catch {
@@ -117,6 +120,20 @@ export default function RideConfirmScreen({ route, navigation }: Props): React.J
     Linking.openURL(url).catch(() =>
       Alert.alert('App not found', `Install ${name} to book directly from here.`)
     );
+  };
+
+  // Item 6: advance the ride's self-reported status; no live GPS/driver feed exists yet, so
+  // riders manually mark progress (booked -> in_progress -> completed).
+  const advanceStatus = async (next: 'booked' | 'in_progress' | 'completed'): Promise<void> => {
+    setStatusUpdating(true);
+    try {
+      await updateRideStatus(rideId, next);
+      setRideStatus(next);
+    } catch {
+      Alert.alert('Error', 'Could not update the ride status. Please try again.');
+    } finally {
+      setStatusUpdating(false);
+    }
   };
 
   if (loading || !match) {
@@ -187,9 +204,9 @@ export default function RideConfirmScreen({ route, navigation }: Props): React.J
       </View>
 
       <View style={styles.actionBar}>
-        {booked ? (
-          <Text style={styles.bookedText}>Booked — have a great ride! 🚕</Text>
-        ) : (
+        {rideStatus === 'completed' ? (
+          <Text style={styles.bookedText}>Ride completed — hope it went smoothly! 🚕</Text>
+        ) : rideStatus === 'ready' ? (
           <>
             <Button
               title="Cancel ride"
@@ -200,10 +217,35 @@ export default function RideConfirmScreen({ route, navigation }: Props): React.J
             <Button
               title="I've booked the cab"
               variant="gold"
-              onPress={() => setBooked(true)}
+              loading={statusUpdating}
+              onPress={() => advanceStatus('booked')}
               style={styles.actionButton}
             />
           </>
+        ) : rideStatus === 'booked' ? (
+          <>
+            <Button
+              title="Cancel ride"
+              variant="destructive"
+              onPress={() => navigation.navigate('Cancel', { rideId })}
+              style={styles.actionButton}
+            />
+            <Button
+              title="Mark ride started"
+              variant="gold"
+              loading={statusUpdating}
+              onPress={() => advanceStatus('in_progress')}
+              style={styles.actionButton}
+            />
+          </>
+        ) : (
+          <Button
+            title="Mark ride completed"
+            variant="gold"
+            loading={statusUpdating}
+            onPress={() => advanceStatus('completed')}
+            style={styles.actionButton}
+          />
         )}
       </View>
     </View>

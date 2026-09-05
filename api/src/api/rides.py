@@ -9,15 +9,26 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from api.src.api.deps import get_current_rider_id
-from api.src.api.schemas.ride import CancellationResult, RideHistoryItem
+from api.src.api.schemas.ride import CancellationResult, RideHistoryItem, RideStatusUpdateRequest
 from api.src.db import get_db
 from api.src.models.match import Match
-from api.src.models.ride import Ride
+from api.src.models.ride import Ride, RideStatus
 from api.src.models.ride_intent import IntentStatus, RideIntent
 from api.src.services.matching_service import cancel_ride
 from api.src.services.notification_service import notify_match_cancelled
 
 router = APIRouter(prefix="/rides", tags=["rides"])
+
+# Item 6: manual status updates (no live GPS/driver-app integration yet, so riders self-report
+# progress). Only forward transitions along the natural lifecycle — cancellation stays on the
+# dedicated /cancel endpoint since only that path runs the free-cutoff/fee-charging logic.
+_ALLOWED_STATUS_TRANSITIONS: dict[RideStatus, set[RideStatus]] = {
+    RideStatus.READY: {RideStatus.BOOKED},
+    RideStatus.BOOKED: {RideStatus.IN_PROGRESS},
+    RideStatus.IN_PROGRESS: {RideStatus.COMPLETED},
+    RideStatus.COMPLETED: set(),
+    RideStatus.CANCELLED: set(),
+}
 
 
 @router.get("", response_model=list[RideHistoryItem])
@@ -132,3 +143,39 @@ def cancel(
     return CancellationResult(
         fee_charged=outcome.fee_charged, within_free_cutoff=outcome.within_free_cutoff
     )
+
+
+@router.patch("/{ride_id}/status")
+def update_status(
+    ride_id: uuid.UUID,
+    body: RideStatusUpdateRequest,
+    db: Session = Depends(get_db),
+    rider_id: uuid.UUID = Depends(get_current_rider_id),
+) -> dict:
+    """Manual self-reported status update (item 6): either participant can advance a ride
+    through its lifecycle since there's no live driver/GPS feed yet."""
+    ride = db.get(Ride, ride_id)
+    if ride is None:
+        raise HTTPException(status_code=404, detail="Ride not found")
+
+    match = db.get(Match, ride.match_id)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Match not found for ride")
+    if rider_id not in (match.intent_a.rider_id, match.intent_b.rider_id):
+        raise HTTPException(status_code=403, detail="Not a participant in this ride")
+
+    try:
+        new_status = RideStatus(body.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid status value") from exc
+
+    allowed = _ALLOWED_STATUS_TRANSITIONS.get(ride.status, set())
+    if new_status not in allowed:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot move ride from {ride.status.value} to {new_status.value}",
+        )
+
+    ride.status = new_status
+    db.commit()
+    return {"id": str(ride.id), "status": ride.status.value}
