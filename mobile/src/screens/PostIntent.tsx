@@ -115,8 +115,12 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
   };
 
   const onSubmit = async (): Promise<void> => {
-    if (!originStation || !destinationStation || !selectedTrain || !expectedArrivalTime) {
-      Alert.alert('Missing details', 'Station, destination, and your train are required.');
+    if (!originStation || !destinationStation || !expectedArrivalTime) {
+      Alert.alert('Missing details', 'Station, destination, and expected arrival time are required.');
+      return;
+    }
+    if (Number.isNaN(new Date(expectedArrivalTime).getTime())) {
+      Alert.alert('Invalid time', 'Enter arrival time as YYYY-MM-DDTHH:MM, e.g. 2026-09-05T18:30.');
       return;
     }
     if (!finalDestination) {
@@ -201,10 +205,10 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
           </Text>
         </Pressable>
 
-        <Text style={styles.sectionLabel}>Train</Text>
+        <Text style={styles.sectionLabel}>Train (optional)</Text>
         <Pressable style={styles.stationField} onPress={onPickTrain}>
           <Text style={selectedTrain ? typography.body : styles.placeholder}>
-            {selectedTrain ? `${selectedTrain.name} · #${selectedTrain.number}` : 'Select your train'}
+            {selectedTrain ? `${selectedTrain.name} · #${selectedTrain.number}` : 'Select your train (skip if travelling by bus/other)'}
           </Text>
         </Pressable>
         {selectedTrain ? (
@@ -229,9 +233,14 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
         <TextField
           label="Expected arrival time"
           value={expectedArrivalTime}
-          editable={false}
-          placeholder="Pick a train above to set this automatically"
-          helperText="Set from your selected train's scheduled arrival — not editable"
+          onChangeText={selectedTrain ? undefined : setExpectedArrivalTime}
+          editable={!selectedTrain}
+          placeholder="YYYY-MM-DDTHH:MM, e.g. 2026-09-05T18:30"
+          helperText={
+            selectedTrain
+              ? "Set from your selected train's scheduled arrival — not editable"
+              : 'When you expect to reach the destination station (or meeting point)'
+          }
         />
 
         <Text style={styles.sectionLabel}>Final drop-off</Text>

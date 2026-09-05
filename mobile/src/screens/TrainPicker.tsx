@@ -71,6 +71,10 @@ export default function TrainPickerScreen({ route, navigation }: Props): React.J
           </Text>
         ) : null}
 
+        <Pressable style={styles.skipRow} onPress={() => navigation.goBack()}>
+          <Text style={styles.trackLink}>Skip — continue without a train →</Text>
+        </Pressable>
+
         <FlatList
           data={results}
           keyExtractor={(item) => item.train_number}
@@ -128,4 +132,6 @@ const styles = StyleSheet.create({
   arrow: { color: colors.textTertiary },
   duration: { ...typography.caption, marginTop: spacing.xs, color: colors.textTertiary },
   empty: { textAlign: 'center', marginTop: spacing.lg },
+  skipRow: { marginBottom: spacing.sm },
+  trackLink: { ...typography.caption, color: colors.accentTeal, fontWeight: '600' },
 });
