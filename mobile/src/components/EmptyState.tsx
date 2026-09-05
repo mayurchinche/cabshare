@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, spacing, typography } from '../theme';
+import { gradients, spacing, typography } from '../theme';
 import Button from './Button';
 
 type Props = {
@@ -20,7 +21,7 @@ export default function EmptyState({
 }: Props): React.JSX.Element {
   return (
     <View style={styles.container}>
-      <View style={styles.badge} />
+      <LinearGradient colors={gradients.primary} style={styles.badge} />
       <Text style={styles.title}>{title}</Text>
       {description ? <Text style={styles.description}>{description}</Text> : null}
       {actionLabel && onAction ? (
@@ -40,9 +41,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    opacity: 0.35,
     marginBottom: spacing.md,
   },
   title: {

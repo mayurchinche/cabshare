@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, gradients, radii, spacing, typography } from '../theme';
+import { colors, gradients, radii, shadows, spacing, typography } from '../theme';
 
 type ButtonVariant = 'primary' | 'gold' | 'secondary' | 'destructive';
 
@@ -49,12 +49,13 @@ export default function Button({
   );
 
   if (variant === 'primary' || variant === 'gold') {
+    const glow = shadows.glow(variant === 'primary' ? colors.primary : colors.accent);
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled: isDisabled, busy: loading }}
         onPress={isDisabled ? undefined : onPress}
-        style={[isDisabled && styles.disabled, style]}
+        style={[!isDisabled && glow, isDisabled && styles.disabled, style]}
       >
         {({ pressed }) => (
           <LinearGradient
@@ -118,5 +119,6 @@ const styles = StyleSheet.create({
   text: {
     ...typography.subheading,
     color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
 });

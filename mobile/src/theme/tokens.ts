@@ -44,17 +44,46 @@ export const spacing = {
 };
 
 export const typography = {
-  heading: { fontSize: 24, fontWeight: '700' as const, color: colors.textPrimary },
-  subheading: { fontSize: 17, fontWeight: '600' as const, color: colors.textPrimary },
+  heading: { fontSize: 24, fontWeight: '700' as const, color: colors.textPrimary, letterSpacing: -0.3 },
+  subheading: { fontSize: 17, fontWeight: '600' as const, color: colors.textPrimary, letterSpacing: -0.1 },
   body: { fontSize: 15, fontWeight: '400' as const, color: colors.textPrimary },
   caption: { fontSize: 13, fontWeight: '400' as const, color: colors.textSecondary },
+  // Tracked-out uppercase micro-label — the "SECTION HEADER" / button-caption look every
+  // unicorn fintech app (CRED, PhonePe, INDMoney) uses for section eyebrows and pill labels.
+  overline: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: colors.textSecondary,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+  },
 };
 
 export const radii = {
-  sm: 10,
-  md: 16,
-  lg: 24,
+  sm: 12,
+  md: 20,
+  lg: 28,
 };
 
-export const tokens = { colors, gradients, spacing, typography, radii };
+// Soft, colored depth — flat opaque cards with zero shadow is what makes an app look like a
+// prototype instead of a premium product. iOS reads shadow* props directly; Android needs the
+// separate `elevation` number (shadowColor/opacity are ignored there pre-tinted-elevation APIs).
+export const shadows = {
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  glow: (color: string) => ({
+    shadowColor: color,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  }),
+};
+
+export const tokens = { colors, gradients, spacing, typography, radii, shadows };
 export default tokens;

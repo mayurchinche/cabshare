@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { colors, radii, spacing, typography } from '../theme';
+import { colors, radii, shadows, spacing, typography } from '../theme';
 
 type Props = TextInputProps & {
   label: string;
@@ -65,13 +65,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm + 4,
     paddingHorizontal: spacing.sm + 4,
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
   inputFocused: {
     borderColor: colors.borderFocused,
-    borderWidth: 2,
+    ...shadows.glow(colors.borderFocused),
   },
   inputError: {
     borderColor: colors.error,

@@ -1,2 +1,2 @@
-export { tokens, colors, gradients, spacing, typography, radii } from './tokens';
+export { tokens, colors, gradients, spacing, typography, radii, shadows } from './tokens';
 export { default } from './tokens';
