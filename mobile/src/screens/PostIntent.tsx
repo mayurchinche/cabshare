@@ -30,10 +30,42 @@ const GENDER_OPTIONS: NonNullable<RideIntentCreate['gender_preference']>[] = [
  * Feature 002: restyled with shared theme/components + CarMotion "searching" state while
  * polling for a match.
  */
+/** Local wall-clock "YYYY-MM-DDTHH:mm" for the current instant — deliberately NOT
+ * `toISOString()` (UTC), since this string is later parsed by `new Date(...)` which treats a
+ * no-timezone-suffix string as LOCAL time. Using the UTC string here previously set the field
+ * to a time ~5.5 hours in the past for IST devices (UTC+5:30), which then produced a matching
+ * window that had already closed by the time the intent was created. */
+function nowLocalDateTimeString(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  return `${y}-${mo}-${d}T${h}:${mi}`;
+}
+
 function addDaysToDateString(dateStr: string, days: number): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // ponytail: was `new Date(dateStr+'T00:00:00')` (parsed in the DEVICE's local timezone) then
+  // `.toISOString()` (always UTC) to re-extract the date — on any IST device (UTC+5:30, i.e.
+  // every real user of this India-only app) local midnight is 18:30 UTC the PREVIOUS day, so
+  // slicing toISOString() silently lost a day on every call. Built entirely in UTC instead, so
+  // there's no local-timezone round-trip to lose a day across.
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day + days));
+  return utc.toISOString().slice(0, 10);
+}
+
+/** Today's date in the DEVICE's local calendar (not UTC) — `new Date().toISOString()` reflects
+ * UTC "now", which is still YESTERDAY's date for the first ~5.5 hours of every IST day
+ * (UTC+5:30); using it directly as "today" would query trains for the wrong day right when
+ * someone opens the app early morning. */
+function todayLocalDateString(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export default function PostIntentScreen({ navigation, route }: Props): React.JSX.Element {
@@ -111,7 +143,7 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
       Alert.alert('Pick stations first', 'Choose your origin and destination stations before selecting a train.');
       return;
     }
-    const date = travelDate ?? new Date().toISOString().slice(0, 10);
+    const date = travelDate ?? todayLocalDateString();
     navigation.navigate('TrainPicker', {
       fromCode: originStation.station_code,
       toCode: destinationStation.station_code,
@@ -249,7 +281,7 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
                 navigation.navigate('TrainLiveStatus', {
                   trainNumber: selectedTrain.number,
                   trainName: selectedTrain.name,
-                  travelDate: travelDate ?? new Date().toISOString().slice(0, 10),
+                  travelDate: travelDate ?? todayLocalDateString(),
                 })
               }
             >
@@ -277,7 +309,7 @@ export default function PostIntentScreen({ navigation, route }: Props): React.JS
         />
         {!selectedTrain && (
           <Pressable
-            onPress={() => setExpectedArrivalTime(new Date().toISOString().slice(0, 16))}
+            onPress={() => setExpectedArrivalTime(nowLocalDateTimeString())}
           >
             <Text style={styles.trackLink}>Use current time →</Text>
           </Pressable>
