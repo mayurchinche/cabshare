@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import os
-import random
 
 from api.src.models.rider import Rider, VerificationStatus
 
@@ -43,17 +42,27 @@ class OtpService:
     def uses_real_sms(self) -> bool:
         return self._twilio_client is not None
 
+    # ponytail: fixed OTP for all users while Twilio is unpaid/broken. Revert to
+    # random once a paid Twilio (or other SMS provider) is wired back in.
+    _FIXED_CODE = "5484"
+
     def request_otp(self, phone_number: str) -> str | None:
-        code = f"{random.randint(0, 999999):06d}"
+        code = self._FIXED_CODE
         self._codes[phone_number] = code
         if self._twilio_client is not None:
-            self._twilio_client.messages.create(
-                body=f"Your CabShare verification code is {code}",
-                from_=self._from_number,
-                to=phone_number,
-            )
-            logger.info("otp.requested via=twilio")
-            return None
+            try:
+                self._twilio_client.messages.create(
+                    body=f"Your CabShare verification code is {code}",
+                    from_=self._from_number,
+                    to=phone_number,
+                )
+                logger.info("otp.requested via=twilio")
+                return None
+            except Exception:
+                # ponytail: Twilio trial accounts reject custom SMS bodies/unverified numbers.
+                # Fall back to on-screen code (fine for friend-testing) instead of a 500.
+                # Upgrade to a paid Twilio account to restore real SMS delivery.
+                logger.exception("otp.twilio_send_failed, falling back to debug code")
         logger.info("otp.requested via=debug")
         return code
 

@@ -33,8 +33,18 @@
     "plugins": [
       [
         "expo-build-properties",
-        { "android": { "usesCleartextTraffic": true } }
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e9aadb2c-a83c-4aa7-b561-fc180f3f8526"
+      }
+    },
+    "owner": "mayurchinche"
   }
 }
