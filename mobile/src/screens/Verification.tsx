@@ -143,10 +143,10 @@ export default function VerificationScreen({ navigation }: Props): React.JSX.Ele
             <Text style={[typography.caption, styles.subtitle]}>
               Enter the 6-digit code sent to {phoneNumber}
             </Text>
-            {/* ponytail: __DEV__-gated only — real SMS provider not wired yet (no live account),
-                so this stays visible in local/dev builds for testability but never in production. */}
-            {__DEV__ && debugOtpCode ? (
-              <Text style={styles.devHint}>(dev only — code: {debugOtpCode})</Text>
+            {/* ponytail: shown in release builds too until a paid SMS provider is wired in —
+                friend-testers need to see the fixed code since no real text is sent. */}
+            {debugOtpCode ? (
+              <Text style={styles.devHint}>(no SMS sent yet — code: {debugOtpCode})</Text>
             ) : null}
             <View style={styles.otpWrapper}>
               <SegmentedCodeInput value={otpCode} onChangeText={setOtpCode} />

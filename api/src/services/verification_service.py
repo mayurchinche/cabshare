@@ -44,7 +44,7 @@ class OtpService:
 
     # ponytail: fixed OTP for all users while Twilio is unpaid/broken. Revert to
     # random once a paid Twilio (or other SMS provider) is wired back in.
-    _FIXED_CODE = "5484"
+    _FIXED_CODE = "548473"
 
     def request_otp(self, phone_number: str) -> str | None:
         code = self._FIXED_CODE
